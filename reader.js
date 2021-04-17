@@ -2,7 +2,7 @@ const fs = require('fs');
 const convert = require('xml-js');
 
 const main = () => {
-    const qvd = fs.readFileSync('prueba.qvd', null);
+    const qvd = fs.readFileSync('tab1.qvd', null);
     
     // header es el objeto obtenido de leer el xml
     // finH es el indice donde termina el xml
@@ -23,7 +23,7 @@ const main = () => {
     }
     // Inicio de la tabla de datos
     const data = dataBrt.slice(iniData, dataBrt.length);
-    console.log(header);
+    // console.log(header);
     const simbolos = [];
     for(const campo of header.campos)
     {
@@ -35,19 +35,28 @@ const main = () => {
     // console.log(tabla);
     const idxTable = getIndexTable(header, data, header.rows.offset, header.rows.length);
 
-    const finalTable = [];
-    for(let i = 0; i < idxTable.length; i++)
+    toJSON(simbolos, idxTable, header.campos);
+}
+
+const toJSON = (symbols, indices, fields) => {
+    // const finalTable = [];
+    const tab = [];
+    const fieldArr = fields.map(itm => itm.field.replace(/\s/gm, '_'));
+
+    for(let i = 0; i < indices.length; i++)
     {
-        const row = idxTable[i];
-        // console.log(row);
-        const ob = [];
-        for(let j = 0; j < header.campos.length; j++)
+        const row = indices[i];
+        // const ob = [];
+        const no = {};
+        for(let j = 0; j < fields.length; j++)
         {
-            ob.push(simbolos[j][row[j]]);
+            no[fieldArr[j]] = row[j] < 0 ? null : symbols[j][row[j]];
+            // ob.push(symbols[j][row[j]]);
         }
-        finalTable.push(ob);
+        tab.push(no);
+        // finalTable.push(ob);
     }
-    console.log(finalTable);
+    fs.writeFileSync('Prueba2.json', JSON.stringify(tab));
 }
 
 const getIndexTable = (header, buff, start, length) => {
@@ -55,11 +64,11 @@ const getIndexTable = (header, buff, start, length) => {
     const rows = [];
     // Cada renglon consiste en n bytes, donde n = recordByteSize
     const le = header.campos.map(itm => itm.bitWidth);
-    console.log(le);
-    for(let i = start; i < start + 40; i+= rb)
+    // console.log(le);
+    for(let i = start; i < start + length; i+= rb)
     {
         const arrow = new Int32Array(buff.slice(i, i + (rb)));
-        
+        // console.log(arrow);
         let row = bytesToInt32(arrow);
         const mask = (-1 >>> 0);
         // console.log('Idx ' + (row >>> 0).toString(2));
@@ -67,16 +76,25 @@ const getIndexTable = (header, buff, start, length) => {
         const campos = [];
         for(let k = 0; k < header.campos.length; k++)
         {
-            // console.log('Mascara ' + ((mask >>> (rb*8 - le[k])) >>> 0).toString(2));
-            const result = (mask >>> (rb*8 - le[k])) & row;
-            row = row >>> le[k];
-            // console.log(result);
-            campos.push(result);
+            if(header.campos[k].bitWidth === 0)
+                campos.push(0);
+            else
+            {
+                // 32 es la longitud en bits de la mascara
+                let result = (mask >>> (32 - le[k])) & row;
+                // Debug de la mascara y el numero
+                // console.log('Mascara ' + ((mask >>> (rb*8 - le[k])) >>> 0).toString(2));
+                // console.log((result >>> 0).toString(2));
+                row = row >>> le[k];
+                // console.log(result);
+                result += header.campos[k].bias;
+                campos.push(result);
+            }
         }
         rows.push(campos);
         // console.log(row.toString(2));
     }
-    console.log(rows);
+    // console.log(rows);
     return rows;
 }
 
@@ -100,7 +118,7 @@ const getSymbolTable = (start, end, buff) => {
     // 6 es double (8 bytes) y string (terminado en 0)
 
     // header.campos[0].length
-    console.log(`Inicio ${start} Fin ${end}`);
+    // console.log(`Inicio ${start} Fin ${end}`);
 
     const resultado = [];
     // for(let k = start; k < end; k++)
@@ -197,7 +215,7 @@ const byteToInt32 = (/*byte[]*/byteArray) => {
 
 const bytesToInt32 = (arr) => {
     const buff = Buffer.from(arr);
-    return buff.readInt32LE(0);
+    return buff.readIntLE(0, arr.length);
 }
 
 const bytesToDouble = (arr) => {
