@@ -1,8 +1,8 @@
 const fs = require('fs');
 const convert = require('xml-js');
 
-const main = () => {
-    const qvd = fs.readFileSync('tab1.qvd', null);
+const main = (file) => {
+    const qvd = fs.readFileSync(file, null);
     
     // header es el objeto obtenido de leer el xml
     // finH es el indice donde termina el xml
@@ -35,11 +35,10 @@ const main = () => {
     // console.log(tabla);
     const idxTable = getIndexTable(header, data, header.rows.offset, header.rows.length);
 
-    toJSON(simbolos, idxTable, header.campos);
+    return toObject(simbolos, idxTable, header.campos);
 }
 
-const toJSON = (symbols, indices, fields) => {
-    // const finalTable = [];
+const toObject = (symbols, indices, fields) => {
     const tab = [];
     const fieldArr = fields.map(itm => itm.field.replace(/\s/gm, '_'));
 
@@ -51,12 +50,10 @@ const toJSON = (symbols, indices, fields) => {
         for(let j = 0; j < fields.length; j++)
         {
             no[fieldArr[j]] = row[j] < 0 ? null : symbols[j][row[j]];
-            // ob.push(symbols[j][row[j]]);
         }
         tab.push(no);
-        // finalTable.push(ob);
     }
-    fs.writeFileSync('Prueba2.json', JSON.stringify(tab));
+    return tab;
 }
 
 const getIndexTable = (header, buff, start, length) => {
@@ -64,7 +61,6 @@ const getIndexTable = (header, buff, start, length) => {
     const rows = [];
     // Cada renglon consiste en n bytes, donde n = recordByteSize
     const le = header.campos.map(itm => itm.bitWidth);
-    // console.log(le);
     for(let i = start; i < start + length; i+= rb)
     {
         const arrow = new Int32Array(buff.slice(i, i + (rb)));
@@ -76,25 +72,24 @@ const getIndexTable = (header, buff, start, length) => {
         const campos = [];
         for(let k = 0; k < header.campos.length; k++)
         {
+            let result = 0;
             if(header.campos[k].bitWidth === 0)
-                campos.push(0);
+                result = 0;
             else
             {
                 // 32 es la longitud en bits de la mascara
-                let result = (mask >>> (32 - le[k])) & row;
+                result = (mask >>> (32 - le[k])) & row;
                 // Debug de la mascara y el numero
                 // console.log('Mascara ' + ((mask >>> (rb*8 - le[k])) >>> 0).toString(2));
                 // console.log((result >>> 0).toString(2));
                 row = row >>> le[k];
                 // console.log(result);
-                result += header.campos[k].bias;
-                campos.push(result);
             }
+            result += header.campos[k].bias;
+            campos.push(result);
         }
         rows.push(campos);
-        // console.log(row.toString(2));
     }
-    // console.log(rows);
     return rows;
 }
 
@@ -117,13 +112,7 @@ const getSymbolTable = (start, end, buff) => {
     // 5 es int (4 bytes) y string (terminado en 0)
     // 6 es double (8 bytes) y string (terminado en 0)
 
-    // header.campos[0].length
-    // console.log(`Inicio ${start} Fin ${end}`);
-
     const resultado = [];
-    // for(let k = start; k < end; k++)
-    //     console.log(buff[k]);
-    // return;
 
     // Lectura de los datos
     for(let j = start; j < end; j++)
@@ -175,9 +164,14 @@ const getSymbolTable = (start, end, buff) => {
                 const arrDob2 = new Int32Array(buff.slice(j, j + 8));
                 resultado.push(bytesToDouble(arrDob2));
                 j+=8;
-
+                // let dDoble = '';
                 while(buff[j] !== 0)
+                {
+                    // dDoble+=String.fromCharCode(buff[j]);
                     j++;
+                }
+                // console.log(dDoble);
+                // resultado.push(parseFloat(dDoble));
                 break;
             default:
                 console.log('ERROR, TIPO NO VALIDO');
@@ -186,31 +180,6 @@ const getSymbolTable = (start, end, buff) => {
     }
     
     return resultado;
-}
-
-const byteToInt32 = (/*byte[]*/byteArray) => {
-    let value = 0;
-    if(byteArray[3] > 128) // Quiere decir que es un numero negativo
-    {
-        
-        const negs = [255 - byteArray[0] + 1];
-        for(let i = 1; i < byteArray.length; i++)
-        {
-            negs.push(255 - byteArray[i]);
-            // negs[i] +=  i === 0 ? 1 : 0
-        }
-        value = negs[0];
-        for (let i = 1; i < negs.length; i++)
-            value += negs[i] * 256;
-        value *= -1;
-    }
-    else
-    {
-        value = byteArray[0];
-        for (let i = 1; i < byteArray.length; i++)
-            value += byteArray[i] * 256;
-    }
-    return value;
 }
 
 const bytesToInt32 = (arr) => {
@@ -262,4 +231,8 @@ const getHeader = (buff) => {
     return ret;
 }
 
-main();
+const QVD = {
+    read: main
+}
+
+module.exports = QVD;

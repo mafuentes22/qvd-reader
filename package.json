@@ -1,7 +1,7 @@
 {
   "name": "qvd-reader",
   "version": "1.0.0",
-  "description": "",
+  "description": "A javascript reader of QVD files",
   "main": "reader.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -12,7 +12,12 @@
     "qlikview",
     "qliksense"
   ],
-  "author": "mfuentes",
+  "homepage": "https://github.com/mafuentes22/qvd-reader",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mafuentes22/qvd-reader"
+  },
+  "author": "mafuentes22 <fuentes.angel22@hotmail.com> (https://github.com/mafuentes22)",
   "license": "MIT",
   "dependencies": {
     "xml-js": "^1.6.11"
