@@ -65,9 +65,16 @@ const getIndexTable = (header, buff, start, length) => {
     {
         const arrow = new Int32Array(buff.slice(i, i + (rb)));
         // console.log(arrow);
-        let row = bytesToInt32(arrow);
-        const mask = (-1 >>> 0);
-        // console.log('Idx ' + (row >>> 0).toString(2));
+        let row = [];
+        arrow.reverse();
+        let bits = '';
+        for(let k = 0; k < arrow.length; k++)
+        {
+            
+            bits += ("00000000" + arrow[k].toString(2)).slice(-8);
+        }
+        row = bits.split('').reverse().map(num => parseInt(num));
+
         // Lectura de los indices de cada campo
         const campos = [];
         for(let k = 0; k < header.campos.length; k++)
@@ -77,13 +84,7 @@ const getIndexTable = (header, buff, start, length) => {
                 result = 0;
             else
             {
-                // 32 es la longitud en bits de la mascara
-                result = (mask >>> (32 - le[k])) & row;
-                // Debug de la mascara y el numero
-                // console.log('Mascara ' + ((mask >>> (rb*8 - le[k])) >>> 0).toString(2));
-                // console.log((result >>> 0).toString(2));
-                row = row >>> le[k];
-                // console.log(result);
+                result = bitsToInt32(row.slice(header.campos[k].bitOffset, (header.campos[k].bitOffset + header.campos[k].bitWidth)));
             }
             result += header.campos[k].bias;
             campos.push(result);
@@ -190,6 +191,18 @@ const bytesToInt32 = (arr) => {
 const bytesToDouble = (arr) => {
     const buff = Buffer.from(arr);
     return buff.readDoubleLE(0);
+}
+
+const bitsToInt32 = (arr) => {
+    if(arr === 0)
+        return 0;
+    // arr.reverse();
+    // console.log(arr);
+    let res = arr[0];
+    // arr.map((num) => console.log(num));
+    for(let i = 1; i < arr.length; i++)
+        res += arr[i] * Math.pow(2,i);
+    return res;
 }
 
 const getHeader = (buff) => {
